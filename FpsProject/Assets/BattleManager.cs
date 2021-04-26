@@ -206,6 +206,7 @@ public class BattleManager : MonoBehaviour
                 enemies.Remove(enemy);
                 enemiesController.Remove(enemyName);
                 pushObject(enemy);
+                return;
             }
         }
     }
