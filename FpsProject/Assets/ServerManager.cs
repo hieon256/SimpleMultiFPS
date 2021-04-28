@@ -31,6 +31,7 @@ public class ServerManager : MonoBehaviour
     TcpClient client;
     NetworkStream nwStream;
 
+    byte[] recvData = new byte[0];
     private Queue<string> dataQueue = new Queue<string>(); // 수신용 쓰레드를 메인쓰레드에서 읽기 위해 담는 큐.
     private Queue<string> writeQueue = new Queue<string>(); // 수신용 쓰레드를 메인쓰레드에서 읽기 위해 담는 큐.
 
@@ -81,12 +82,24 @@ public class ServerManager : MonoBehaviour
         {
             int count = writeQueue.Count;
             string sendData = "";
-            for(int i = 0; i < count; i++)
+            for (int i = 0; i < count; i++)
             {
                 sendData += writeQueue.Dequeue();
             }
 
-            byte[] bytesToSend = Encoding.UTF8.GetBytes(sendData);
+            string countStr = Encoding.Default.GetByteCount(sendData).ToString();
+            byte[] byteCount = Encoding.UTF8.GetBytes(countStr);
+
+            byte[] Header = new byte[4];
+
+            Array.Copy(byteCount, 0, Header, 0, byteCount.Length);
+
+            byte[] byteData = Encoding.UTF8.GetBytes(sendData);
+
+            byte[] bytesToSend = new byte[Header.Length + byteData.Length];
+
+            Array.Copy(Header, 0, bytesToSend, 0, Header.Length);
+            Array.Copy(byteData, 0, bytesToSend, Header.Length, byteData.Length);
             try
             {
                 nwStream.Write(bytesToSend, 0, bytesToSend.Length);
@@ -136,13 +149,13 @@ public class ServerManager : MonoBehaviour
                 // send.
                 string eventJson = JsonUtility.ToJson(eventClass);
 
-                writeQueue.Enqueue("Partition" + eventJson);
+                writeQueue.Enqueue( eventJson + "Partition");
 
                 // receive.
                 m_fnReceiveHandler = new AsyncCallback(handleDataReceive);
 
                 // 비동기 자료 수신 BeginReceive.
-                byte[] bytesToRead = new byte[1024];
+                byte[] bytesToRead = new byte[256];
 
                 nwStream.BeginRead(bytesToRead, 0, bytesToRead.Length, m_fnReceiveHandler, bytesToRead);
 
@@ -186,17 +199,41 @@ public class ServerManager : MonoBehaviour
 
         int recvBytes = nwStream.EndRead(ar);
 
-        if (recvBytes > 0)
-        {
-            string[] str = Encoding.UTF8.GetString(buffer, 0, recvBytes).Split(new string[] { "Partition" }, StringSplitOptions.RemoveEmptyEntries);
+        int prevLength = recvData.Length;
+        Array.Resize(ref recvData, recvData.Length + recvBytes);
+        Array.Copy(buffer, 0, recvData, prevLength, recvBytes);
 
-            for (int i = 0; i < str.Length; i++)
+        if (recvData.Length > 4)
+        {
+            string byteCount = Encoding.UTF8.GetString(recvData, 0, 4);
+
+            int bC = int.Parse(byteCount);
+
+            if (recvData.Length >= 4 + bC)
             {
-                dataQueue.Enqueue(str[i]); // 비동기 쓰레드에서 받은 데이타 큐에 담기.
+                string Data = Encoding.UTF8.GetString(recvData, 4, bC);
+
+                DataToMainThread(Data);
+
+                Array.Clear(recvData, 0, 4 + bC);
+                Array.Copy(recvData, 4 + bC, recvData, 0, recvData.Length - (4 + bC));
+                Array.Resize(ref recvData, recvData.Length - (4 + bC));
             }
         }
 
         nwStream.BeginRead(buffer, 0, buffer.Length, m_fnReceiveHandler, buffer);
+    }
+    private void DataToMainThread(string completeData)
+    {
+        string[] handleData = completeData.Split(new string[] { "Partition" }, StringSplitOptions.RemoveEmptyEntries);
+
+        for (int i = 0; i < handleData.Length; i++)
+        {
+            if (handleData[i] == string.Empty)
+                continue;
+
+            dataQueue.Enqueue(handleData[i]); // 비동기 쓰레드에서 받은 데이타 큐에 담기.
+        }
     }
     public void PlayerUpdate(CharacterClass cc)
     {
@@ -212,7 +249,7 @@ public class ServerManager : MonoBehaviour
 
         string eventJson = JsonUtility.ToJson(ec);
 
-        writeQueue.Enqueue("Partition" + eventJson);
+        writeQueue.Enqueue(eventJson + "Partition");
     }
     public void PlayerShoot(ShootingClass sc)
     {
@@ -228,6 +265,6 @@ public class ServerManager : MonoBehaviour
 
         string eventJson = JsonUtility.ToJson(ec);
 
-        writeQueue.Enqueue("Partition" + eventJson);
+        writeQueue.Enqueue(eventJson + "Partition");
     }
 }

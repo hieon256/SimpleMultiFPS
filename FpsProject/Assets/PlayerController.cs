@@ -21,6 +21,8 @@ public class ShootingClass
 }
 public class PlayerController : MonoBehaviour
 {
+    public GameObject characterObj;
+
     public Animator animator;
     public float walkSpeed;
     public float runSpeed;

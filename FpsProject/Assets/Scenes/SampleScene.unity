@@ -12452,6 +12452,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7b755096daa293f41b3bb95feda70e00, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  characterObj: {fileID: 276761289}
   animator: {fileID: 1131566120}
   walkSpeed: 1
   runSpeed: 2
