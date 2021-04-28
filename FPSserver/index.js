@@ -102,17 +102,17 @@ server.on("connection", function (socket) {
 
                 lngBuf.write(lng+"","utf8");
 
+                delete clients[disconUserName];
+                console.log(clients);
+
                 for (var username in clients) { // 다른 유저들에게 전송.
                     if (clients[username] != socket) {
                         clients[username].write(lngBuf.toString() + sendMsg);
                     }
                 }
 
-                delete clients[disconUserName];
-
                 let date = new Date();
                 console.log("closed ", date);
-                console.log(clients);
 
             } catch (error) {
                 let date = new Date();
