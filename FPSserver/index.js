@@ -30,7 +30,7 @@ server.on("connection", function (socket) {
             try {
                 let Data = new Object();
                 var dataStrings = data.toString().split("Partition");
-                
+
                 for (var username in clients) { // 다른 유저들에게 전송.
                     if (clients[username] != socket) {
                         clients[username].write(data.toString());
@@ -39,18 +39,18 @@ server.on("connection", function (socket) {
 
                 var arr = [recvData, data];
                 recvData = Buffer.concat(arr);
-                if(recvData.byteLength > 4){
-                    var byteCount = recvData.toString("utf8",0,4);
+                if (recvData.byteLength > 4) {
+                    var byteCount = recvData.toString("utf8", 0, 4);
 
-                    if(recvData.byteLength >= 4 + parseInt(byteCount)){
-                        var originData = recvData.toString("utf8",4, 4 + parseInt(byteCount));
+                    if (recvData.byteLength >= 4 + parseInt(byteCount)) {
+                        var originData = recvData.toString("utf8", 4, 4 + parseInt(byteCount));
 
                         HandleData(originData);
 
-                        recvData = recvData.slice(4 + parseInt(byteCount),recvData.byteLength);
+                        recvData = recvData.slice(4 + parseInt(byteCount), recvData.byteLength);
                     }
                 }
-                
+
             } catch (error) {
                 let date = new Date();
                 console.error(date, ":", error);
@@ -86,29 +86,27 @@ server.on("connection", function (socket) {
                         disconUserName = username;
                     }
                 }
-                if(disconUserName == "")
+                if (disconUserName == "")
                     return;
 
                 var json = {
-                    userName : disconUserName,
-                    eventName : "Disconnection",
-                    eventData : {}
+                    userName: disconUserName,
+                    eventName: "Disconnection",
+                    eventData: {}
                 };
 
-                var sendMsg = JSON.stringify(json)+ "Partition";
+                var sendMsg = JSON.stringify(json) + "Partition";
 
                 var lngBuf = Buffer.alloc(4);
                 var lng = strByteLength(sendMsg);
 
-                lngBuf.write(lng+"","utf8");
+                lngBuf.write(lng + "", "utf8");
 
                 delete clients[disconUserName];
                 console.log(clients);
 
                 for (var username in clients) { // 다른 유저들에게 전송.
-                    if (clients[username] != socket) {
-                        clients[username].write(lngBuf.toString() + sendMsg);
-                    }
+                    clients[username].write(lngBuf.toString() + sendMsg);
                 }
 
                 let date = new Date();
